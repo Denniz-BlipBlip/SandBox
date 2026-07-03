@@ -1,5 +1,15 @@
-public class App {
-    public static void main(String[] args) {
-        System.out.println("Hello from BasicCrud-JavaSwing!");
-    }
+import javax.swing.SwingUtilities;
+
+import GUI.Window;
+
+public class App
+{
+  public static void main(String[] args) {
+    SwingUtilities.invokeLater(new Runnable(){
+      public void run()
+      {
+        new Window();
+      }
+    });
+  }
 }

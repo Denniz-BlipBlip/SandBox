@@ -11,12 +11,16 @@ public class Window extends JFrame
     setSize(500,500);
     setLayout(new BorderLayout());
     setLocationRelativeTo(null);
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     this.layout=new CardLayout();
     this.panel=new JPanel(layout);
 
     panel.add(new Login(),"Login");
     panel.add(new Register(), "Register");
     layout.show(panel,"Login");
+
+    add(this.panel);
+    setVisible(true);
   }
 
   public void show(String name)
