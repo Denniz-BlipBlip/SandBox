@@ -1,6 +1,7 @@
 #### Packages
 pkg update && pkg upgrade -y
 
+git clone https://github.com/NvChad/starter ~/.config/nvim && nvim
 pkg install nvim
 
 pkg install -y git curl nodejs npm ripgrep unzip clang \
@@ -20,6 +21,7 @@ pip install python-lsp-server[all] --break-system-packages
 
 ### others (pkg)
 
+termux-x11-nightly
 mono
 neovim
 git
@@ -92,6 +94,11 @@ chmod +x /data/data/com.termux/files/usr/bin/dev
 chmod +x /data/data/com.termux/files/usr/bin/startx
 chmod +x /data/data/com.termux/files/usr/bin/newprojectweb
 chmod +x /data/data/com.termux/files/usr/bin/newproject
+
+### install nerdfont
+pkg install curl ncurses-utils zip
+curl -fsSL https://rawgithubusercontent.com/arnavgr/termux-nf//main/install.sh | bash
+getnf
 
 ### final steps inside neovim
 :Lazy sync

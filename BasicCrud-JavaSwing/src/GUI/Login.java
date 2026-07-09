@@ -43,15 +43,14 @@ public class Login extends JPanel
     label.setFont(this.FONT_TITLE);
     label.setForeground(this.FONT_COLOR);
 
+    panel.add(Box.createVerticalStrut(15));
     panel.add(label);
-    //panel.add(Box.createVerticalStrut(10));
-    //panel.add(field);
-    //panel.add(Box.createVerticalStrut(15));
+    panel.add()
     return panel;
   }
 
   private final Color FONT_COLOR=Color.BLACK;
-  private final Color BG_COLOR=Color.RED;
+  private final Color BG_COLOR=Color.BLUE;
   private final Dimension FIELD_SIZE=new Dimension(Integer.MAX_VALUE,40);
   private final Font FONT_STYLE=new Font("Monospaced",100,Font.BOLD);
   private final Font FONT_TITLE=new Font("Monospaced",100,Font.BOLD);
