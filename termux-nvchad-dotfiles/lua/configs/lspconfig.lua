@@ -1,3 +1,5 @@
+--File Path: ~/.config/nvim/lua/plugins/init.lua
+
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 
 -- HTML

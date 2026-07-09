@@ -1,3 +1,5 @@
+-- File Path ~/.config/nvim/lua/mappings.lua
+
 require "nvchad.mappings"
 
 local map = vim.keymap.set

@@ -1,0 +1,60 @@
+# File Path /data/data/com.termux/files/usr/bin
+
+#!/bin/bash
+
+export DISPLAY=:0
+
+SRC=$(find . -maxdepth 2 -type d -name "src" | head -1)
+
+if [ -z "$SRC" ]; then
+  echo "No src/ folder found! cd into your project root first."
+  exit 1
+fi
+
+CLASSPATH="$SRC"
+if [ -d "./lib" ]; then
+  for jar in ./lib/*.jar; do
+    [ -f "$jar" ] && CLASSPATH="$CLASSPATH:$jar"
+  done
+fi
+
+SOURCES="$HOME/javasources.txt"
+
+# Check if any java file uses GUI
+NEEDS_GUI=false
+if grep -rl "javax.swing\|java.awt\|JFrame\|JPanel" "$SRC" --include="*.java" > /dev/null 2>&1; then
+  NEEDS_GUI=true
+fi
+
+# Start X11 and open the Termux-X11 app automatically
+if [ "$NEEDS_GUI" = true ]; then
+  if ! xdpyinfo -display :0 >/dev/null 2>&1; then
+    echo "GUI detected — starting X11..."
+    termux-x11 :0 &
+    sleep 1
+    # Open Termux-X11 Android app
+    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity > /dev/null 2>&1
+    sleep 2
+  else
+    echo "GUI detected — X11 already running!"
+    am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity > /dev/null 2>&1
+  fi
+fi
+
+echo "Cleaning class files..."
+find . -name "*.class" -delete
+
+echo "Compiling all files..."
+find "$SRC" -name "*.java" -type f > "$SOURCES"
+
+echo "Files to compile:"
+cat "$SOURCES"
+
+javac -cp "$CLASSPATH" -d "$SRC" $(cat "$SOURCES" | tr '\n' ' ')
+
+if [ $? -eq 0 ]; then
+  echo "Running..."
+  java -cp "$CLASSPATH" App
+else
+  echo "Compilation failed!"
+fi

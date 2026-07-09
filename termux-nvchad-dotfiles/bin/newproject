@@ -1,0 +1,1632 @@
+
+#!/bin/bash
+
+if [ -z "$1" ]; then
+  echo "Usage: newproject <name> <type> [subtype] [db]"
+  exit 1
+fi
+
+NAME=$1
+TYPE=$2
+SUBTYPE=$3
+DB=$4
+
+mkdir -p "$NAME"
+cd "$NAME"
+
+if [ "$TYPE" = "java" ]; then
+  mkdir -p src bin lib .vscode
+
+  cat > .vscode/settings.json << JSON
+{
+  "java.project.sourcePaths": ["src"],
+  "java.project.outputPath": "bin",
+  "java.project.referencedLibraries": ["lib/**/*.jar"]
+}
+JSON
+
+  if [ "$SUBTYPE" = "springboot" ]; then
+    mkdir -p src/main/java/com/app src/main/resources
+
+    cat > pom.xml << POM
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.0</version>
+    </parent>
+    <groupId>com.app</groupId>
+    <artifactId>$NAME</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+POM
+
+    if [ "$DB" = "mysql" ]; then
+      cat >> pom.xml << POM
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+        </dependency>
+POM
+    elif [ "$DB" = "postgresql" ]; then
+      cat >> pom.xml << POM
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+POM
+    else
+      cat >> pom.xml << POM
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+        </dependency>
+POM
+    fi
+
+    cat >> pom.xml << POM
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+POM
+
+    cat > src/main/java/com/app/App.java << JAVA
+package com.app;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class App {
+    public static void main(String[] args) {
+        SpringApplication.run(App.class, args);
+    }
+}
+JAVA
+
+    cat > src/main/java/com/app/HelloController.java << JAVA
+package com.app;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+public class HelloController {
+    @GetMapping("/")
+    public String hello() {
+        return "Hello from $NAME!";
+    }
+}
+JAVA
+
+    if [ "$DB" = "mysql" ]; then
+      cat > src/main/resources/application.properties << PROPS
+spring.datasource.url=jdbc:mysql://localhost:3306/mydb
+spring.datasource.username=root
+spring.datasource.password=
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+server.port=8080
+PROPS
+    elif [ "$DB" = "postgresql" ]; then
+      cat > src/main/resources/application.properties << PROPS
+spring.datasource.url=jdbc:postgresql://localhost:5432/mydb
+spring.datasource.username=postgres
+spring.datasource.password=
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+server.port=8080
+PROPS
+    else
+      cat > src/main/resources/application.properties << PROPS
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.jpa.hibernate.ddl-auto=update
+spring.h2.console.enabled=true
+server.port=8080
+PROPS
+    fi
+    echo "Spring Boot project created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "sqlite" ] && [ "$DB" = "php" ]; then
+    [ -f ~/Downloads/sqlite-jdbc.jar ] && cp ~/Downloads/sqlite-jdbc.jar lib/
+    mkdir -p backend/api backend/config
+    cat > src/App.java << JAVA
+import java.sql.*;
+
+public class App {
+    static final String DB_URL = "jdbc:sqlite:database.db";
+    public static void main(String[] args) throws Exception {
+        Connection conn = DriverManager.getConnection(DB_URL);
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)");
+        stmt.execute("INSERT INTO users (name) VALUES ('Hello from $NAME!')");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+        while (rs.next()) {
+            System.out.println(rs.getInt("id") + " " + rs.getString("name"));
+        }
+        conn.close();
+    }
+}
+JAVA
+    cat > backend/config/db.php << PHP
+<?php
+define('DB_PATH', __DIR__ . '/../../database.db');
+function getDB() {
+    \$db = new PDO('sqlite:' . DB_PATH);
+    \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return \$db;
+}
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)");
+}
+PHP
+    cat > backend/api/users.php << PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+require_once '../config/db.php';
+initDB();
+\$db = getDB();
+\$method = \$_SERVER['REQUEST_METHOD'];
+switch(\$method) {
+    case 'GET':
+        \$stmt = \$db->query('SELECT * FROM users');
+        echo json_encode(\$stmt->fetchAll(PDO::FETCH_ASSOC));
+        break;
+    case 'POST':
+        \$data = json_decode(file_get_contents('php://input'), true);
+        \$stmt = \$db->prepare('INSERT INTO users (name) VALUES (?)');
+        \$stmt->execute([\$data['name']]);
+        echo json_encode(['id' => \$db->lastInsertId(), 'name' => \$data['name']]);
+        break;
+    case 'DELETE':
+        \$id = \$_GET['id'] ?? null;
+        if(\$id) {
+            \$stmt = \$db->prepare('DELETE FROM users WHERE id = ?');
+            \$stmt->execute([\$id]);
+            echo json_encode(['deleted' => true]);
+        }
+        break;
+}
+PHP
+    cat > backend/index.php << PHP
+<?php
+header('Content-Type: application/json');
+echo json_encode(['status' => 'ok', 'app' => '$NAME']);
+PHP
+    echo "Java + SQLite + PHP created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "postgresql" ] && [ "$DB" = "php" ]; then
+    [ -f ~/Downloads/postgresql.jar ] && cp ~/Downloads/postgresql.jar lib/
+    mkdir -p backend/api backend/config
+    cat > src/App.java << JAVA
+import java.sql.*;
+
+public class App {
+    public static void main(String[] args) throws Exception {
+        Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/mydb", "postgres", "");
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT)");
+        stmt.execute("INSERT INTO users (name) VALUES ('Hello from $NAME!')");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+        while (rs.next()) {
+            System.out.println(rs.getInt("id") + " " + rs.getString("name"));
+        }
+        conn.close();
+    }
+}
+JAVA
+    cat > backend/config/db.php << PHP
+<?php
+function getDB() {
+    \$db = new PDO('pgsql:host=localhost;dbname=mydb', 'postgres', '');
+    \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return \$db;
+}
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL)");
+}
+PHP
+    cat > backend/api/users.php << PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+require_once '../config/db.php';
+initDB();
+\$db = getDB();
+\$method = \$_SERVER['REQUEST_METHOD'];
+switch(\$method) {
+    case 'GET':
+        \$stmt = \$db->query('SELECT * FROM users');
+        echo json_encode(\$stmt->fetchAll(PDO::FETCH_ASSOC));
+        break;
+    case 'POST':
+        \$data = json_decode(file_get_contents('php://input'), true);
+        \$stmt = \$db->prepare('INSERT INTO users (name) VALUES (?) RETURNING *');
+        \$stmt->execute([\$data['name']]);
+        echo json_encode(\$stmt->fetch(PDO::FETCH_ASSOC));
+        break;
+    case 'DELETE':
+        \$id = \$_GET['id'] ?? null;
+        if(\$id) {
+            \$stmt = \$db->prepare('DELETE FROM users WHERE id = ?');
+            \$stmt->execute([\$id]);
+            echo json_encode(['deleted' => true]);
+        }
+        break;
+}
+PHP
+    cat > backend/index.php << PHP
+<?php
+header('Content-Type: application/json');
+echo json_encode(['status' => 'ok', 'app' => '$NAME']);
+PHP
+    echo "Java + PostgreSQL + PHP created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "mysql" ] && [ "$DB" = "php" ]; then
+    [ -f ~/Downloads/mysql-connector.jar ] && cp ~/Downloads/mysql-connector.jar lib/
+    mkdir -p backend/api backend/config
+    cat > src/App.java << JAVA
+import java.sql.*;
+
+public class App {
+    public static void main(String[] args) throws Exception {
+        Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/mydb", "root", "");
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))");
+        stmt.execute("INSERT INTO users (name) VALUES ('Hello from $NAME!')");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+        while (rs.next()) {
+            System.out.println(rs.getInt("id") + " " + rs.getString("name"));
+        }
+        conn.close();
+    }
+}
+JAVA
+    cat > backend/config/db.php << PHP
+<?php
+function getDB() {
+    \$db = new PDO('mysql:host=localhost;dbname=mydb', 'root', '');
+    \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    return \$db;
+}
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)");
+}
+PHP
+    cat > backend/api/users.php << PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+require_once '../config/db.php';
+initDB();
+\$db = getDB();
+\$method = \$_SERVER['REQUEST_METHOD'];
+switch(\$method) {
+    case 'GET':
+        \$stmt = \$db->query('SELECT * FROM users');
+        echo json_encode(\$stmt->fetchAll(PDO::FETCH_ASSOC));
+        break;
+    case 'POST':
+        \$data = json_decode(file_get_contents('php://input'), true);
+        \$stmt = \$db->prepare('INSERT INTO users (name) VALUES (?)');
+        \$stmt->execute([\$data['name']]);
+        echo json_encode(['id' => \$db->lastInsertId(), 'name' => \$data['name']]);
+        break;
+    case 'DELETE':
+        \$id = \$_GET['id'] ?? null;
+        if(\$id) {
+            \$stmt = \$db->prepare('DELETE FROM users WHERE id = ?');
+            \$stmt->execute([\$id]);
+            echo json_encode(['deleted' => true]);
+        }
+        break;
+}
+PHP
+    cat > backend/index.php << PHP
+<?php
+header('Content-Type: application/json');
+echo json_encode(['status' => 'ok', 'app' => '$NAME']);
+PHP
+    echo "Java + MySQL + PHP created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "sqlite" ]; then
+    [ -f ~/Downloads/sqlite-jdbc.jar ] && cp ~/Downloads/sqlite-jdbc.jar lib/
+    cat > src/App.java << JAVA
+import java.sql.*;
+
+public class App {
+    public static void main(String[] args) throws Exception {
+        Connection conn = DriverManager.getConnection("jdbc:sqlite:mydb.db");
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)");
+        stmt.execute("INSERT INTO users (name) VALUES ('Hello from $NAME!')");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+        while (rs.next()) {
+            System.out.println(rs.getInt("id") + " " + rs.getString("name"));
+        }
+        conn.close();
+    }
+}
+JAVA
+    echo "Java + SQLite created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "postgresql" ]; then
+    [ -f ~/Downloads/postgresql.jar ] && cp ~/Downloads/postgresql.jar lib/
+    cat > src/App.java << JAVA
+import java.sql.*;
+
+public class App {
+    public static void main(String[] args) throws Exception {
+        Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/mydb", "postgres", "");
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT)");
+        stmt.execute("INSERT INTO users (name) VALUES ('Hello from $NAME!')");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+        while (rs.next()) {
+            System.out.println(rs.getInt("id") + " " + rs.getString("name"));
+        }
+        conn.close();
+    }
+}
+JAVA
+    echo "Java + PostgreSQL created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "mysql" ]; then
+    [ -f ~/Downloads/mysql-connector.jar ] && cp ~/Downloads/mysql-connector.jar lib/
+    cat > src/App.java << JAVA
+import java.sql.*;
+
+public class App {
+    public static void main(String[] args) throws Exception {
+        Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/mydb", "root", "");
+        Statement stmt = conn.createStatement();
+        stmt.execute("CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))");
+        stmt.execute("INSERT INTO users (name) VALUES ('Hello from $NAME!')");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+        while (rs.next()) {
+            System.out.println(rs.getInt("id") + " " + rs.getString("name"));
+        }
+        conn.close();
+    }
+}
+JAVA
+    echo "Java + MySQL created at $(pwd)"
+
+  else
+    cat > src/App.java << JAVA
+public class App {
+    public static void main(String[] args) {
+        System.out.println("Hello from $NAME!");
+    }
+}
+JAVA
+    echo "Java project created at $(pwd)"
+  fi
+
+elif [ "$TYPE" = "javascript" ] || [ "$TYPE" = "js" ]; then
+  mkdir -p src .vscode
+
+  cat > .vscode/settings.json << JSON
+{
+  "javascript.preferences.importModuleSpecifier": "relative"
+}
+JSON
+
+  cat > .gitignore << GIT
+node_modules/
+*.log
+.env
+GIT
+
+  cat > package.json << PKG
+{
+  "name": "$NAME",
+  "version": "1.0.0",
+  "main": "src/App.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/App.js"
+  },
+  "dependencies": {}
+}
+PKG
+
+  if [ "$SUBTYPE" = "sqlite" ]; then
+    mkdir -p src/database
+    sed -i 's/"dependencies": {}/"dependencies": { "better-sqlite3": "^9.4.0" }/' package.json
+
+    cat > src/database/db.js << DB
+const Database = require('better-sqlite3');
+const db = new Database('database.db');
+
+function initDB() {
+  db.exec(\`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL
+  )\`);
+}
+
+function insert(name) {
+  const stmt = db.prepare('INSERT INTO users (name) VALUES (?)');
+  return stmt.run(name);
+}
+
+function getAll() {
+  return db.prepare('SELECT * FROM users').all();
+}
+
+module.exports = { initDB, insert, getAll, db };
+DB
+
+    cat > src/App.js << JSF
+const { initDB, insert, getAll } = require('./database/db');
+
+initDB();
+insert('Hello from $NAME!');
+console.log(getAll());
+JSF
+
+  elif [ "$SUBTYPE" = "mysql" ]; then
+    mkdir -p src/database
+    sed -i 's/"dependencies": {}/"dependencies": { "mysql2": "^3.9.0" }/' package.json
+
+    cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=mydb
+DB_USER=root
+DB_PASSWORD=
+ENV
+
+    cat > src/database/db.js << DB
+const mysql = require('mysql2/promise');
+
+async function getConn() {
+  return mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 3306,
+    database: process.env.DB_NAME || 'mydb',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || ''
+  });
+}
+
+async function initDB() {
+  const conn = await getConn();
+  await conn.execute(\`CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+  )\`);
+  await conn.end();
+}
+
+module.exports = { getConn, initDB };
+DB
+
+    cat > src/App.js << JSF
+require('dotenv').config();
+const { initDB, getConn } = require('./database/db');
+
+(async () => {
+  await initDB();
+  const conn = await getConn();
+  await conn.execute('INSERT INTO users (name) VALUES (?)', ['Hello from $NAME!']);
+  const [rows] = await conn.execute('SELECT * FROM users');
+  console.log(rows);
+  await conn.end();
+})();
+JSF
+    sed -i 's/"dependencies": { "mysql2": "\^3.9.0" }/"dependencies": { "mysql2": "^3.9.0", "dotenv": "^16.4.0" }/' package.json
+
+  elif [ "$SUBTYPE" = "postgresql" ]; then
+    mkdir -p src/database
+    sed -i 's/"dependencies": {}/"dependencies": { "pg": "^8.11.0", "dotenv": "^16.4.0" }/' package.json
+
+    cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mydb
+DB_USER=postgres
+DB_PASSWORD=
+ENV
+
+    cat > src/database/db.js << DB
+const { Client } = require('pg');
+
+function getClient() {
+  return new Client({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'mydb',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || ''
+  });
+}
+
+async function initDB(client) {
+  await client.query(\`CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL
+  )\`);
+}
+
+module.exports = { getClient, initDB };
+DB
+
+    cat > src/App.js << JSF
+require('dotenv').config();
+const { getClient, initDB } = require('./database/db');
+
+(async () => {
+  const client = getClient();
+  await client.connect();
+  await initDB(client);
+  await client.query('INSERT INTO users (name) VALUES (\$1)', ['Hello from $NAME!']);
+  const res = await client.query('SELECT * FROM users');
+  console.log(res.rows);
+  await client.end();
+})();
+JSF
+
+  else
+    cat > src/App.js << JSF
+function main() {
+  console.log("Hello from $NAME!");
+}
+
+main();
+JSF
+  fi
+
+  echo "JavaScript project created at $(pwd)"
+  echo "Run with: Space+rjs on App.js (or any .js file)"
+
+elif [ "$TYPE" = "python" ]; then
+
+  if [ "$SUBTYPE" = "django" ]; then
+    pip install django --break-system-packages 2>/dev/null
+    django-admin startproject config .
+    python3 manage.py startapp core
+
+    if [ "$DB" = "mysql" ]; then
+      pip install mysqlclient --break-system-packages 2>/dev/null
+      cat > config/settings_db.py << SETTINGS
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'mydb',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': 'localhost',
+        'PORT': '3306',
+    }
+}
+SETTINGS
+    elif [ "$DB" = "postgresql" ] || [ "$DB" = "postgre" ]; then
+      pip install psycopg2-binary --break-system-packages 2>/dev/null
+      cat > config/settings_db.py << SETTINGS
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mydb',
+        'USER': 'postgres',
+        'PASSWORD': '',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+SETTINGS
+    else
+      cat > config/settings_db.py << SETTINGS
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'db.sqlite3',
+    }
+}
+SETTINGS
+    fi
+
+    cat > core/models.py << MODELS
+from django.db import models
+
+class User(models.Model):
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+MODELS
+
+    cat > core/views.py << VIEWS
+from django.http import JsonResponse
+from django.views import View
+from .models import User
+import json
+
+class UserView(View):
+    def get(self, request):
+        users = list(User.objects.values())
+        return JsonResponse(users, safe=False)
+
+    def post(self, request):
+        data = json.loads(request.body)
+        user = User.objects.create(name=data['name'])
+        return JsonResponse({'id': user.id, 'name': user.name})
+
+    def delete(self, request):
+        id = request.GET.get('id')
+        User.objects.filter(id=id).delete()
+        return JsonResponse({'deleted': True})
+VIEWS
+
+    cat > core/urls.py << URLS
+from django.urls import path
+from .views import UserView
+
+urlpatterns = [
+    path('users/', UserView.as_view()),
+]
+URLS
+
+    cat > requirements.txt << REQ
+django
+REQ
+    cat > .gitignore << GIT
+__pycache__/
+*.pyc
+.env
+*.db
+db.sqlite3
+GIT
+    echo "Django project created at $(pwd)"
+
+  elif [ "$SUBTYPE" = "flet" ]; then
+    mkdir -p pages components utils assets
+    chmod -R 755 .
+    touch pages/__init__.py components/__init__.py utils/__init__.py
+
+    cat > .gitignore << GIT
+__pycache__/
+*.pyc
+.env
+*.db
+GIT
+
+    cat > requirements.txt << REQ
+flet>=0.85.0
+REQ
+
+    if [ "$DB" = "lite" ] || [ "$DB" = "sqlite" ]; then
+      mkdir -p database
+      chmod 755 database
+      touch database/__init__.py
+      cat > database/db.py << DB
+import sqlite3
+
+DB_PATH = "database.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert(name):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO items (name) VALUES (?)", (name,))
+    conn.commit()
+    conn.close()
+
+def get_all():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete(id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+DB
+      cat > main.py << MAIN
+import flet as ft
+from database.db import init_db
+
+def main(page: ft.Page):
+    init_db()
+    page.title = "$NAME"
+    page.add(ft.Text("Hello from $NAME!"))
+
+ft.run(main)
+MAIN
+
+    elif [ "$DB" = "postgre" ] || [ "$DB" = "postgresql" ]; then
+      mkdir -p database
+      chmod 755 database
+      touch database/__init__.py
+      cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mydb
+DB_USER=postgres
+DB_PASSWORD=
+ENV
+      cat >> requirements.txt << REQ
+psycopg2-binary
+python-dotenv
+REQ
+      cat > database/db.py << DB
+import psycopg2
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+def get_conn():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert(name):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO items (name) VALUES (%s)", (name,))
+    conn.commit()
+    conn.close()
+
+def get_all():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete(id):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=%s", (id,))
+    conn.commit()
+    conn.close()
+DB
+      cat > main.py << MAIN
+import flet as ft
+from database.db import init_db
+
+def main(page: ft.Page):
+    init_db()
+    page.title = "$NAME"
+    page.add(ft.Text("Hello from $NAME!"))
+
+ft.run(main)
+MAIN
+
+    elif [ "$DB" = "mysql" ]; then
+      mkdir -p database
+      chmod 755 database
+      touch database/__init__.py
+      cat >> requirements.txt << REQ
+mysql-connector-python
+python-dotenv
+REQ
+      cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=mydb
+DB_USER=root
+DB_PASSWORD=
+ENV
+      cat > database/db.py << DB
+import mysql.connector
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+def get_conn():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        port=int(os.getenv("DB_PORT")),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert(name):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO items (name) VALUES (%s)", (name,))
+    conn.commit()
+    conn.close()
+
+def get_all():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete(id):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=%s", (id,))
+    conn.commit()
+    conn.close()
+DB
+      cat > main.py << MAIN
+import flet as ft
+from database.db import init_db
+
+def main(page: ft.Page):
+    init_db()
+    page.title = "$NAME"
+    page.add(ft.Text("Hello from $NAME!"))
+
+ft.run(main)
+MAIN
+
+    else
+      cat > main.py << MAIN
+import flet as ft
+
+def main(page: ft.Page):
+    page.title = "$NAME"
+    page.add(ft.Text("Hello from $NAME!"))
+
+ft.run(main)
+MAIN
+    fi
+
+    cat > pages/home.py << HOME
+import flet as ft
+
+def home_view(page: ft.Page):
+    return ft.View(
+        "/",
+        [ft.Text("Home — $NAME")]
+    )
+HOME
+
+    chmod -R 755 .
+    echo "Flet project created at $(pwd)"
+
+  else
+    mkdir -p src tests .vscode
+
+    cat > .vscode/settings.json << JSON
+{
+  "python.analysis.extraPaths": ["src"]
+}
+JSON
+
+    cat > .gitignore << GIT
+__pycache__/
+*.pyc
+.env
+*.db
+GIT
+
+    cat > requirements.txt << REQ
+REQ
+
+    if [ "$SUBTYPE" = "sqlite" ] || [ "$SUBTYPE" = "lite" ]; then
+      mkdir -p src/database
+      touch src/database/__init__.py
+      cat > src/database/db.py << DB
+import sqlite3
+
+DB_PATH = "database.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert(name):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO items (name) VALUES (?)", (name,))
+    conn.commit()
+    conn.close()
+
+def get_all():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete(id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+DB
+
+      cat > src/main.py << MAIN
+from database.db import init_db, insert, get_all
+
+def main():
+    init_db()
+    insert("Hello from $NAME!")
+    for row in get_all():
+        print(row)
+
+if __name__ == "__main__":
+    main()
+MAIN
+
+    elif [ "$SUBTYPE" = "postgresql" ] || [ "$SUBTYPE" = "postgre" ]; then
+      mkdir -p src/database
+      touch src/database/__init__.py
+      pip install psycopg2-binary python-dotenv --break-system-packages 2>/dev/null
+      cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mydb
+DB_USER=postgres
+DB_PASSWORD=
+ENV
+      cat >> requirements.txt << REQ
+psycopg2-binary
+python-dotenv
+REQ
+      cat > src/database/db.py << DB
+import psycopg2
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+def get_conn():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert(name):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO items (name) VALUES (%s)", (name,))
+    conn.commit()
+    conn.close()
+
+def get_all():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete(id):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=%s", (id,))
+    conn.commit()
+    conn.close()
+DB
+
+      cat > src/main.py << MAIN
+from database.db import init_db, insert, get_all
+
+def main():
+    init_db()
+    insert("Hello from $NAME!")
+    for row in get_all():
+        print(row)
+
+if __name__ == "__main__":
+    main()
+MAIN
+
+    elif [ "$SUBTYPE" = "mysql" ]; then
+      mkdir -p src/database
+      touch src/database/__init__.py
+      pip install mysql-connector-python python-dotenv --break-system-packages 2>/dev/null
+      cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=mydb
+DB_USER=root
+DB_PASSWORD=
+ENV
+      cat >> requirements.txt << REQ
+mysql-connector-python
+python-dotenv
+REQ
+      cat > src/database/db.py << DB
+import mysql.connector
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+def get_conn():
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        port=int(os.getenv("DB_PORT")),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def insert(name):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO items (name) VALUES (%s)", (name,))
+    conn.commit()
+    conn.close()
+
+def get_all():
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete(id):
+    conn = get_conn()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM items WHERE id=%s", (id,))
+    conn.commit()
+    conn.close()
+DB
+
+      cat > src/main.py << MAIN
+from database.db import init_db, insert, get_all
+
+def main():
+    init_db()
+    insert("Hello from $NAME!")
+    for row in get_all():
+        print(row)
+
+if __name__ == "__main__":
+    main()
+MAIN
+
+    else
+      cat > src/main.py << MAIN
+def main():
+    print("Hello from $NAME!")
+
+if __name__ == "__main__":
+    main()
+MAIN
+    fi
+
+    touch tests/__init__.py
+    cat > tests/test_main.py << TEST
+import unittest
+
+class TestMain(unittest.TestCase):
+    def test_main(self):
+        self.assertTrue(True)
+
+if __name__ == "__main__":
+    unittest.main()
+TEST
+
+    echo "Python project created at $(pwd)"
+  fi
+
+elif [ "$TYPE" = "php" ]; then
+  mkdir -p src public/css public/js config .vscode
+
+  cat > .vscode/settings.json << JSON
+{
+  "php.validate.executablePath": "/usr/bin/php",
+  "php.suggest.basic": true
+}
+JSON
+
+  cat > .gitignore << GIT
+*.db
+.env
+vendor/
+GIT
+
+  if [ "$SUBTYPE" = "sqlite" ]; then
+    cat > config/db.php << PHP
+<?php
+define('DB_PATH', __DIR__ . '/../database.db');
+
+function getDB() {
+    try {
+        \$db = new PDO('sqlite:' . DB_PATH);
+        \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return \$db;
+    } catch (PDOException \$e) {
+        die(json_encode(['error' => \$e->getMessage()]));
+    }
+}
+
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+}
+PHP
+
+    cat > src/index.php << PHP
+<?php
+require_once '../config/db.php';
+initDB();
+\$db = getDB();
+\$users = \$db->query('SELECT * FROM users')->fetchAll(PDO::FETCH_ASSOC);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$NAME</title>
+  <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+  <h1>Hello from $NAME!</h1>
+  <ul>
+    <?php foreach(\$users as \$user): ?>
+      <li><?= htmlspecialchars(\$user['name']) ?></li>
+    <?php endforeach; ?>
+  </ul>
+  <script src="../public/js/main.js"></script>
+</body>
+</html>
+PHP
+
+  elif [ "$SUBTYPE" = "mysql" ]; then
+    cat > config/db.php << PHP
+<?php
+function getDB() {
+    try {
+        \$db = new PDO('mysql:host=localhost;dbname=mydb', 'root', '');
+        \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return \$db;
+    } catch (PDOException \$e) {
+        die(json_encode(['error' => \$e->getMessage()]));
+    }
+}
+
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+}
+PHP
+
+    cat > src/index.php << PHP
+<?php
+require_once '../config/db.php';
+initDB();
+\$db = getDB();
+\$users = \$db->query('SELECT * FROM users')->fetchAll(PDO::FETCH_ASSOC);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$NAME</title>
+  <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+  <h1>Hello from $NAME!</h1>
+  <ul>
+    <?php foreach(\$users as \$user): ?>
+      <li><?= htmlspecialchars(\$user['name']) ?></li>
+    <?php endforeach; ?>
+  </ul>
+  <script src="../public/js/main.js"></script>
+</body>
+</html>
+PHP
+
+  elif [ "$SUBTYPE" = "postgresql" ]; then
+    cat > config/db.php << PHP
+<?php
+function getDB() {
+    try {
+        \$db = new PDO('pgsql:host=localhost;dbname=mydb', 'postgres', '');
+        \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return \$db;
+    } catch (PDOException \$e) {
+        die(json_encode(['error' => \$e->getMessage()]));
+    }
+}
+
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+}
+PHP
+
+    cat > src/index.php << PHP
+<?php
+require_once '../config/db.php';
+initDB();
+\$db = getDB();
+\$users = \$db->query('SELECT * FROM users')->fetchAll(PDO::FETCH_ASSOC);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$NAME</title>
+  <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+  <h1>Hello from $NAME!</h1>
+  <ul>
+    <?php foreach(\$users as \$user): ?>
+      <li><?= htmlspecialchars(\$user['name']) ?></li>
+    <?php endforeach; ?>
+  </ul>
+  <script src="../public/js/main.js"></script>
+</body>
+</html>
+PHP
+
+  else
+    cat > src/index.php << PHP
+<?php
+\$title = "$NAME";
+\$message = "Hello from $NAME!";
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><?= \$title ?></title>
+  <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+  <h1><?= \$message ?></h1>
+  <script src="../public/js/main.js"></script>
+</body>
+</html>
+PHP
+  fi
+
+  cat > public/css/style.css << CSS
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: sans-serif;
+  background-color: #0a0a0a;
+  color: #ebdbb2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+}
+h1 { color: #fabd2f; margin-bottom: 1rem; }
+ul { list-style: none; }
+li { padding: 0.5rem; color: #ebdbb2; }
+CSS
+
+  cat > public/js/main.js << JS
+console.log("Hello from $NAME!");
+JS
+
+  echo "PHP project created at $(pwd)"
+
+elif [ "$TYPE" = "cpp" ]; then
+  echo "CompileFlags:" > .clangd
+  echo "  Add: [-std=c++17]" >> .clangd
+  cat > main.cpp << CPP
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello from $NAME!" << endl;
+    return 0;
+}
+CPP
+  echo "C++ project created at $(pwd)"
+
+elif [ "$TYPE" = "ruby" ]; then
+  if [ "$SUBTYPE" = "sqlite" ] || [ "$SUBTYPE" = "lite" ]; then
+    cat > Gemfile << GEMFILE
+source "https://rubygems.org"
+gem "sqlite3"
+GEMFILE
+    cat > main.rb << RUBY
+require "sqlite3"
+
+def main
+  db = SQLite3::Database.new "mydb.db"
+  db.execute "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)"
+  db.execute "INSERT INTO users (name) VALUES (?)", ["Hello from $NAME!"]
+  db.execute("SELECT * FROM users") { |row| puts row.inspect }
+  db.close
+end
+
+main
+RUBY
+  else
+    cat > main.rb << RUBY
+def main
+  puts "Hello from $NAME!"
+end
+
+main
+RUBY
+  fi
+  echo "Ruby project created at $(pwd)"
+
+elif [ "$TYPE" = "csharp" ] || [ "$TYPE" = "cs" ]; then
+  mkdir -p src bin lib .vscode
+
+  cat > .vscode/settings.json << JSON
+{
+  "files.exclude": { "bin/": true },
+  "omnisharp.useModernNet": false
+}
+JSON
+
+  cat > .gitignore << GIT
+bin/
+*.exe
+*.dll
+!lib/*.dll
+GIT
+
+  if [ "$SUBTYPE" = "sqlite" ]; then
+    cat > src/App.cs << CS
+using System;
+using Mono.Data.Sqlite;
+
+class App {
+    static void Main() {
+        using (var conn = new SqliteConnection("URI=file:mydb.db")) {
+            conn.Open();
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "INSERT INTO users (name) VALUES ('Hello from $NAME!')";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "SELECT id, name FROM users";
+            using (var reader = cmd.ExecuteReader()) {
+                while (reader.Read()) {
+                    Console.WriteLine(reader.GetInt32(0) + " " + reader.GetString(1));
+                }
+            }
+        }
+    }
+}
+CS
+    echo "C# + SQLite (Mono.Data.Sqlite) project created at $(pwd)"
+    echo "NOTE: Mono.Data.Sqlite.dll ships with the 'mono' Termux package but its exact path"
+    echo "      can vary by build. If mcs can't find it, locate it with:"
+    echo "        find \$PREFIX -iname 'Mono.Data.Sqlite.dll' 2>/dev/null"
+    echo "      and reference it explicitly: mcs -r:/path/to/Mono.Data.Sqlite.dll src/*.cs"
+
+  elif [ "$SUBTYPE" = "mysql" ]; then
+    mkdir -p lib
+    cat > src/App.cs << CS
+using System;
+using MySql.Data.MySqlClient;
+
+class App {
+    static void Main() {
+        using (var conn = new MySqlConnection("Server=localhost;Database=mydb;Uid=root;Pwd=;")) {
+            conn.Open();
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL)";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "INSERT INTO users (name) VALUES ('Hello from $NAME!')";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "SELECT id, name FROM users";
+            using (var reader = cmd.ExecuteReader()) {
+                while (reader.Read()) {
+                    Console.WriteLine(reader.GetInt32(0) + " " + reader.GetString(1));
+                }
+            }
+        }
+    }
+}
+CS
+    echo "C# + MySQL project created at $(pwd)"
+    echo "NOTE: download MySql.Data.dll (Connector/NET, legacy/.NET Framework build compatible"
+    echo "      with Mono) into lib/ manually — cp ~/Downloads/MySql.Data.dll lib/"
+
+  elif [ "$SUBTYPE" = "postgresql" ]; then
+    mkdir -p lib
+    cat > src/App.cs << CS
+using System;
+using Npgsql;
+
+class App {
+    static void Main() {
+        using (var conn = new NpgsqlConnection("Host=localhost;Database=mydb;Username=postgres;Password=")) {
+            conn.Open();
+            var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT NOT NULL)";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "INSERT INTO users (name) VALUES ('Hello from $NAME!')";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "SELECT id, name FROM users";
+            using (var reader = cmd.ExecuteReader()) {
+                while (reader.Read()) {
+                    Console.WriteLine(reader.GetInt32(0) + " " + reader.GetString(1));
+                }
+            }
+        }
+    }
+}
+CS
+    echo "C# + PostgreSQL project created at $(pwd)"
+    echo "NOTE: download an older/Mono-compatible Npgsql.dll into lib/ manually —"
+    echo "      cp ~/Downloads/Npgsql.dll lib/ (modern Npgsql targets .NET only, may not load under Mono)"
+
+  else
+    cat > src/App.cs << CS
+using System;
+
+class App {
+    static void Main() {
+        Console.WriteLine("Hello from $NAME!");
+    }
+}
+CS
+    echo "C# project created at $(pwd)"
+  fi
+
+elif [ "$TYPE" = "both" ]; then
+  mkdir -p src bin lib .vscode
+  cat > .vscode/settings.json << JSON
+{
+  "java.project.sourcePaths": ["src"],
+  "java.project.outputPath": "bin",
+  "java.project.referencedLibraries": ["lib/**/*.jar"]
+}
+JSON
+  echo "CompileFlags:" > .clangd
+  echo "  Add: [-std=c++17]" >> .clangd
+  cat > src/App.java << JAVA
+public class App {
+    public static void main(String[] args) {
+        System.out.println("Hello from $NAME!");
+    }
+}
+JAVA
+  cat > main.cpp << CPP
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout << "Hello from $NAME!" << endl;
+    return 0;
+}
+CPP
+  echo "Project created at $(pwd)"
+
+else
+  echo "Unknown type: $TYPE"
+  exit 1
+fi
+
+nvim .

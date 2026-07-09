@@ -1,0 +1,21 @@
+#!/bin/bash
+tmux kill-session -t dev 2>/dev/null
+tmux new-session -d -s dev -x 220 -y 50
+tmux set-option -g status off
+tmux bind -n M-h select-pane -L
+tmux bind -n M-l select-pane -R
+tmux bind -n M-k select-pane -U
+tmux bind -n M-j select-pane -D
+tmux bind -n M-n new-window
+tmux bind -n M-w kill-window
+tmux bind -n M-] next-window
+tmux bind -n M-[ previous-window
+tmux bind -n M-v split-window -h
+tmux bind -n M-s split-window -v
+tmux bind -n M-x kill-pane
+tmux bind -n M-q kill-session
+tmux split-window -h -t dev
+tmux send-keys -t dev:0.0 'nvim .' Enter
+tmux send-keys -t dev:0.1 'clear' Enter
+tmux select-pane -t dev:0.0
+tmux attach-session -t dev

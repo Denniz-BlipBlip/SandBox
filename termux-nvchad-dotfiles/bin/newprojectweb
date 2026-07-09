@@ -1,0 +1,241 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+  echo "Usage: newprojectweb <name> [php] [sqlite|postgresql]"
+  echo "Examples:"
+  echo "  newprojectweb myapp"
+  echo "  newprojectweb myapp php"
+  echo "  newprojectweb myapp sqlite php"
+  echo "  newprojectweb myapp postgresql php"
+  exit 1
+fi
+
+NAME=$1
+ARG1=$2
+ARG2=$3
+
+HAS_PHP=false
+HAS_SQLITE=false
+HAS_POSTGRESQL=false
+
+for arg in "$ARG1" "$ARG2"; do
+  [ "$arg" = "php" ] && HAS_PHP=true
+  [ "$arg" = "sqlite" ] && HAS_SQLITE=true
+  [ "$arg" = "postgresql" ] && HAS_POSTGRESQL=true
+done
+
+mkdir -p "$NAME"
+cd "$NAME"
+
+mkdir -p public/css public/js .vscode
+
+cat > .vscode/settings.json << JSON
+{
+  "liveServer.settings.port": 3000,
+  "liveServer.settings.root": "/public"
+}
+JSON
+
+cat > .gitignore << GIT
+*.db
+.env
+__pycache__/
+GIT
+
+cat > public/index.html << HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$NAME</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1>Hello from $NAME!</h1>
+  <div id="app"></div>
+  <script src="js/main.js"></script>
+</body>
+</html>
+HTML
+
+cat > public/css/style.css << CSS
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: sans-serif;
+  background-color: #0a0a0a;
+  color: #ebdbb2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+}
+h1 { color: #fabd2f; margin-bottom: 1rem; }
+CSS
+
+if [ "$HAS_PHP" = true ]; then
+  cat > public/js/main.js << JS
+fetch('../backend/api/index.php')
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('app').innerHTML = JSON.stringify(data);
+  })
+  .catch(err => console.error(err));
+JS
+else
+  cat > public/js/main.js << JS
+console.log("Hello from $NAME!");
+document.getElementById('app').innerHTML = '<p>App is running!</p>';
+JS
+fi
+
+if [ "$HAS_PHP" = true ]; then
+  mkdir -p backend/api backend/config
+
+  if [ "$HAS_SQLITE" = true ]; then
+    cat > backend/config/db.php << PHP
+<?php
+define('DB_PATH', __DIR__ . '/../../database.db');
+
+function getDB() {
+    try {
+        \$db = new PDO('sqlite:' . DB_PATH);
+        \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return \$db;
+    } catch (PDOException \$e) {
+        die(json_encode(['error' => \$e->getMessage()]));
+    }
+}
+
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+}
+PHP
+
+    cat > backend/api/users.php << PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+require_once '../config/db.php';
+
+initDB();
+\$db = getDB();
+\$method = \$_SERVER['REQUEST_METHOD'];
+
+switch(\$method) {
+    case 'GET':
+        \$stmt = \$db->query('SELECT * FROM users');
+        echo json_encode(\$stmt->fetchAll(PDO::FETCH_ASSOC));
+        break;
+    case 'POST':
+        \$data = json_decode(file_get_contents('php://input'), true);
+        \$stmt = \$db->prepare('INSERT INTO users (name) VALUES (?)');
+        \$stmt->execute([\$data['name']]);
+        echo json_encode(['id' => \$db->lastInsertId(), 'name' => \$data['name']]);
+        break;
+    case 'DELETE':
+        \$id = \$_GET['id'] ?? null;
+        if(\$id) {
+            \$stmt = \$db->prepare('DELETE FROM users WHERE id = ?');
+            \$stmt->execute([\$id]);
+            echo json_encode(['deleted' => true]);
+        }
+        break;
+}
+PHP
+
+  elif [ "$HAS_POSTGRESQL" = true ]; then
+    cat > .env << ENV
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mydb
+DB_USER=postgres
+DB_PASSWORD=
+ENV
+
+    cat > backend/config/db.php << PHP
+<?php
+function getDB() {
+    try {
+        \$db = new PDO(
+            'pgsql:host=' . getenv('DB_HOST') . ';dbname=' . getenv('DB_NAME'),
+            getenv('DB_USER'),
+            getenv('DB_PASSWORD')
+        );
+        \$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return \$db;
+    } catch (PDOException \$e) {
+        die(json_encode(['error' => \$e->getMessage()]));
+    }
+}
+
+function initDB() {
+    \$db = getDB();
+    \$db->exec("CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+}
+PHP
+
+    cat > backend/api/users.php << PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+require_once '../config/db.php';
+
+initDB();
+\$db = getDB();
+\$method = \$_SERVER['REQUEST_METHOD'];
+
+switch(\$method) {
+    case 'GET':
+        \$stmt = \$db->query('SELECT * FROM users');
+        echo json_encode(\$stmt->fetchAll(PDO::FETCH_ASSOC));
+        break;
+    case 'POST':
+        \$data = json_decode(file_get_contents('php://input'), true);
+        \$stmt = \$db->prepare('INSERT INTO users (name) VALUES (?) RETURNING *');
+        \$stmt->execute([\$data['name']]);
+        echo json_encode(\$stmt->fetch(PDO::FETCH_ASSOC));
+        break;
+    case 'DELETE':
+        \$id = \$_GET['id'] ?? null;
+        if(\$id) {
+            \$stmt = \$db->prepare('DELETE FROM users WHERE id = ?');
+            \$stmt->execute([\$id]);
+            echo json_encode(['deleted' => true]);
+        }
+        break;
+}
+PHP
+  else
+    cat > backend/config/db.php << PHP
+<?php
+// Add your database config here
+PHP
+  fi
+
+  cat > backend/api/index.php << PHP
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+echo json_encode(['status' => 'ok', 'app' => '$NAME']);
+PHP
+
+  echo "Web + PHP project created at $(pwd)"
+  echo "Run with: Space+rh on index.html"
+  echo "PHP server: cd backend && php -S localhost:8080"
+
+else
+  echo "Web project created at $(pwd)"
+  echo "Run with: Space+rh on index.html"
+fi
+
+nvim .

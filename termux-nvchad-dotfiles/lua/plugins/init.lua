@@ -1,3 +1,6 @@
+--File Path: ~/.config/nvim/lua/plugins/init.lua
+
+
 return {
   {
     "stevearc/conform.nvim",

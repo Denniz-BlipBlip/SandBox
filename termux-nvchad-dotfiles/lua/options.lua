@@ -1,3 +1,5 @@
+-- File Path: ~/.config/nvim/lua/options.lua
+
 require "nvchad.options"
 
 vim.opt.number = true

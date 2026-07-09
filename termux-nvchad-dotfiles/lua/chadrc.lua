@@ -1,3 +1,5 @@
+--File path ~/.config/nvim/lua/chadrc.lua
+
 ---@type ChadrcConfig
 local M = {}
 M.base46 = {

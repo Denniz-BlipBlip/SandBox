@@ -1,3 +1,5 @@
+--File Path: ~/.config/nvim/lua/configs/conform.lua
+
 local options = {
   formatters_by_ft = {
     lua = { "stylua" },

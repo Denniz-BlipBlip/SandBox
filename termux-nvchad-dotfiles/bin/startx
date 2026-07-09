@@ -1,0 +1,5 @@
+#!/bin/bash
+export DISPLAY=:0
+termux-x11 :0 &
+sleep 2
+echo "X11 started!"
