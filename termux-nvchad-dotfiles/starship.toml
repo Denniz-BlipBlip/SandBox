@@ -1,0 +1,267 @@
+format = """
+[╭───── ](fg:#e2036f)\
+$username\
+[ Home](fg:#e2036f)\
+$directory\
+\n[│](fg:#e2036f)  \
+[Branch:]() \
+$git_branch\
+[  ](fg:#e8a1c4)\
+[Status:]() \
+$git_status\
+[  ](fg:#e8a1c4)\
+[Commit:]() \
+$git_commit\
+[  ](fg:#e8a1c4)\
+[State:]() \
+$git_state\
+[  ](fg:#e8a1c4)\
+[Metrics:]() \
+$git_metrics\
+\n[│](fg:#e2036f)  \
+[MEM: ]()\
+$memory_usage\
+[   ]()\
+$time\
+\n[│](fg:#e2036f)  \
+[PKG: ]()\
+$package\
+\n[│](fg:#e2036f)  \
+[TOOLS: ]()\
+$c\
+$nodejs\
+$python\
+$rust\
+$golang\
+$java\
+$kotlin\
+$lua\
+$ruby\
+$php\
+\n[│](fg:#e2036f)  \
+$cmd_duration\
+[   ](fg:#e8a1c4)\
+$jobs\
+[   ](fg:#e8a1c4)\
+$shlvl\
+[   ](fg:#e8a1c4)\
+$shell\
+[\n╰─](fg:#e2036f)\
+$character\
+"""
+
+right_format = ""
+palette      = 'cherry'
+
+[palettes.cherry]
+bg            = '#000000'
+bg2           = '#0d0d12'
+bg3           = '#1a1a1f'
+grey          = '#3a3238'
+grey_fg       = '#4a3f45'
+white         = '#f0eeec'
+foreground    = '#f0eeec'
+red           = '#ff375f'
+pink          = '#ff4fa0'
+green         = '#8fbf6a'
+vibrant_green = '#a3d47e'
+blue          = '#c9105e'
+cyan          = '#e8a1c4'
+seablue       = '#c9105e'
+yellow        = '#f2b544'
+orange        = '#d1187a'
+purple        = '#e2036f'
+dark_purple   = '#c9105e'
+teal          = '#e8a1c4'
+pmenu         = '#e2036f'
+
+# ============================================================
+#  Row 1 — Identity
+# ============================================================
+
+[username]
+show_always = true
+style_user  = "fg:#a3d47e bold"
+style_root  = "fg:#e2036f bold"
+format      = "[Choom]($style)"
+
+[directory]
+style             = "fg:#a3d47e bold"
+format            = "[$path ]($style)"
+truncation_length = 100
+truncation_symbol = ""
+use_os_path_sep   = false
+truncate_to_repo  = false
+use_logical_path  = true
+
+[directory.substitutions]
+"Documents" = "Docs"
+"Downloads" = "DL"
+"Desktop"   = "Desk"
+"Projects"  = "Proj"
+
+# ============================================================
+#  Row 2 — Git full details
+# ============================================================
+
+[git_branch]
+symbol = "⎇"
+style  = "fg:#8fbf6a bold"
+format = "[$symbol $branch(:$remote_branch) ]($style)"
+
+[git_status]
+style      = "fg:#f2b544"
+format     = "[$all_status$ahead_behind ]($style)"
+ahead      = "^$count"
+behind     = "v$count"
+diverged   = "^${ahead_count}v${behind_count}"
+untracked  = "?$count"
+stashed    = "S$count"
+modified   = "!$count"
+staged     = "+$count"
+deleted    = "x$count"
+conflicted = "=$count"
+renamed    = "r$count"
+
+[git_commit]
+only_detached      = false
+format             = "[@$hash$tag ](fg:#a3d47e)"
+commit_hash_length = 6
+tag_symbol         = " #"
+tag_disabled       = false
+
+[git_state]
+style        = "fg:#ff375f bold"
+format       = "[$state($progress_current/$progress_total) ]($style)"
+rebase       = "REBASE"
+merge        = "MERGE"
+revert       = "REVERT"
+cherry_pick  = "CHERRY"
+bisect       = "BISECT"
+am           = "AM"
+am_or_rebase = "AM/REBASE"
+
+[git_metrics]
+disabled           = false
+added_style        = "fg:#8fbf6a bold"
+deleted_style      = "fg:#ff375f bold"
+format             = "[+$added ]($added_style)[-$deleted ]($deleted_style)"
+only_nonzero_diffs = true
+
+# ============================================================
+#  Row 3 — System stats
+# ============================================================
+
+[memory_usage]
+disabled  = false
+threshold = 0
+style     = "fg:#a3d47e bold"
+format    = "[$ram_pct ($ram) ]($style)"
+
+[time]
+disabled    = false
+time_format = "%d %b %Y  %I:%M:%S %p"
+style       = "fg:#a3d47e bold"
+format      = "[$time ]($style)"
+
+# ============================================================
+#  Row 4 — Package
+# ============================================================
+
+[package]
+disabled       = false
+style          = "fg:#f2b544 bold"
+format         = "[$symbol$version ]($style)"
+symbol         = "pkg:"
+version_format = "v${raw}"
+
+# ============================================================
+#  Row 5 — Toolchain (auto-hides per directory)
+# ============================================================
+
+[c]
+symbol = "C/C++"
+format = "[$symbol:$version ](fg:#a3d47e)"
+
+[nodejs]
+symbol = "Node"
+format = "[$symbol:$version ](fg:#a3d47e)"
+
+[python]
+symbol        = "Py"
+format        = "[$symbol:$version( ($virtualenv)) ](fg:#a3d47e)"
+python_binary = ["python3", "python"]
+
+[rust]
+symbol = "Rs"
+format = "[$symbol:$version ](fg:#a3d47e)"
+
+[golang]
+symbol = "Go"
+format = "[$symbol:$version ](fg:#a3d47e)"
+
+[java]
+symbol = "Java"
+format = "[$symbol:$version ](fg:#a3d47e)"
+
+[kotlin]
+disabled = false
+symbol   = "Kt"
+format   = "[$symbol:$version ](fg:#a3d47e)"
+
+[lua]
+disabled = false
+symbol   = "Lua"
+format   = "[$symbol:$version ](fg:#a3d47e)"
+
+[ruby]
+disabled = false
+symbol   = "Rb"
+format   = "[$symbol:$version ](fg:#a3d47e)"
+
+[php]
+disabled = false
+symbol   = "PHP"
+format   = "[$symbol:$version ](fg:#a3d47e)"
+
+# ============================================================
+#  Row 6 — Shell info
+# ============================================================
+
+[cmd_duration]
+min_time           = 500
+style              = "fg:#a3d47e bold"
+format             = "[took $duration ]($style)"
+show_milliseconds  = true
+min_time_to_notify = 10000
+
+[jobs]
+symbol    = "~"
+style     = "fg:#a3d47e"
+format    = "[$symbol$number jobs ]($style)"
+threshold = 1
+
+[shlvl]
+disabled  = false
+style     = "fg:#a3d47e bold"
+format    = "[SHLVL:$shlvl ]($style)"
+threshold = 2
+repeat    = false
+
+[shell]
+fish_indicator       = "fish"
+bash_indicator       = "bash"
+zsh_indicator        = "zsh"
+powershell_indicator = "pwsh"
+format               = "[$indicator](fg:#a3d47e)"
+disabled             = false
+
+# ============================================================
+#  Prompt character
+# ============================================================
+
+[character]
+format         = "$symbol "
+success_symbol = "[➤ ](bold fg:#e2036f)"
+error_symbol   = "[➤ ](bold fg:#e2036f)"
+vimcmd_symbol  = "[N ](bold fg:#a3d47e)"
