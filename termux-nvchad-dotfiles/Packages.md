@@ -15,8 +15,12 @@ gem install solargraph
 npm install -g typescript-language-server typescript \
   vscode-langservers-extracted intelephense prettier
 
+pip show pyflakes pycodestyle mccabe
+pip install python-lsp-server[all] --break-system-packages
+
 ### others (pkg)
 
+mono
 neovim
 git
 curl
