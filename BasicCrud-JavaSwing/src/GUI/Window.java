@@ -15,7 +15,7 @@ public class Window extends JFrame
     this.layout=new CardLayout();
     this.panel=new JPanel(layout);
 
-    panel.add(new Login(),"Login");
+    panel.add(new Login(new Window()),"Login");
     panel.add(new Register(), "Register");
     layout.show(panel,"Login");
 
@@ -23,7 +23,7 @@ public class Window extends JFrame
     setVisible(true);
   }
 
-  public void show(String name)
+  public void show_panel(String name)
   {
     this.layout.show(this.panel, name);
   }
