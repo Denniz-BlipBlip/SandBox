@@ -1,9 +1,8 @@
 package GUI;
-import java.awt.BorderLayout;
+import Data.DataManager;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.TextField;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -18,6 +17,7 @@ public class Login extends JPanel
 {
   public Login(Window win)
   {
+    this.manager=manager.get_instance();
     this.window=win;
     setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
     setBackground(BG_COLOR);
@@ -96,8 +96,18 @@ public class Login extends JPanel
     }
     else if(!username.isEmpty()&&!password.isEmpty())
     {
-      JOptionPane.showMessageDialog(this, "Successfully login");
-      return;
+      if(manager.verifyAcc(username, password))
+      {
+        JOptionPane.showMessageDialog(this, "Successfully login");
+        return;
+      }
+      else 
+      {
+        JOptionPane.showMessageDialog(this, "Wrong password or username");
+        this.textField.setText("");
+        this.passwordField.setText("");
+        return;
+      }
     }
   }
 
@@ -112,4 +122,5 @@ public class Login extends JPanel
   private final Font FONT_STYLE=new Font("Monospaced",Font.BOLD,24);
   private final Font FONT_TITLE=new Font("Monospaced",Font.BOLD,40);
   private Window window;
+  private DataManager manager;
 }

@@ -15,8 +15,8 @@ public class Window extends JFrame
     this.layout=new CardLayout();
     this.panel=new JPanel(layout);
 
-    panel.add(new Login(new Window()),"Login");
-    panel.add(new Register(), "Register");
+    panel.add(new Login(this),"Login");
+    panel.add(new Register(this),"Register");
     layout.show(panel,"Login");
 
     add(this.panel);

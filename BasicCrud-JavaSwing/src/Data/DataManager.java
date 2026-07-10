@@ -13,9 +13,9 @@ public class DataManager
     return instance;
   }
 
-  public void insertInfo(String name,String password,double balance)
+  public void insertInfo(String name,String password)
   {
-    this.node.insert(name, password, balance);
+    this.node.insert(name, password);
   }
 
   public boolean verifyAcc(String name,String password)

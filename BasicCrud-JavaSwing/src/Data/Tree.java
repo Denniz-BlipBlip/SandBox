@@ -9,9 +9,9 @@ public class Tree
     this.rand=new Random();
   }
 
-  public void insert(String name,String password,double balance)
+  public void insert(String name,String password)
   {
-    this.root=insert(this.root,name,id_generator(),password,balance);
+    this.root=insert(this.root,name,id_generator(),password);
   }
 
   public boolean checkValid(String name,String password)
@@ -20,17 +20,17 @@ public class Tree
     return false;
   }
 
-  private Node insert(Node root,String name,int id,String password,double balance)
+  private Node insert(Node root,String name,int id,String password)
   {
-    if(root==null){return new Node(new Data(name,id,password,balance));}
+    if(root==null){return new Node(new Data(name,id,password));}
 
     if(id>root.get_data().get_id())
     {
-      return root.set_right(insert(root.get_right(),name,id,password,balance));
+      return root.set_right(insert(root.get_right(),name,id,password));
     }
     else 
     {
-      return root.set_left(insert(root.get_left(),name,id,password,balance));
+      return root.set_left(insert(root.get_left(),name,id,password));
     }
   }
 
