@@ -45,7 +45,7 @@ int listen_socket(int server_fd)
   return 0;
 }
 
-int accept(int server_fd)
+int accept_client(int server_fd)
 {
   sockaddr_in client_address;
   socklen_t  client_len=sizeof(client_address);
@@ -61,10 +61,45 @@ int accept(int server_fd)
   return client_fd;
 }
 
+void echo_loop(int server_fd)
+{
+  char buffer[1024];
+
+  bool running=true;
+  while(running)
+  {
+    memset(buffer,0,sizeof(buffer));
+    int bytes_read=recv(server_fd,buffer,sizeof(buffer),0);
+    
+    if(bytes_read<=0)
+    {
+      if(bytes_read==0)
+      {
+        std::cout<<"client disconnected"<<std::endl;
+      }
+      else
+      {
+        perror("recv failed");
+      }
+      break;
+    }
+    std::cout<<"recv failed"<<std::endl;
+    send(server_fd,buffer,bytes_read,0);
+  }
+  close(server_fd);
+}
+
 
 int main()
 {
   int server_fd=check_socket();
+
+  int bind=bind_socket(server_fd,8080);
+  if(bind==-1)
+  {
+    return 1;
+  }
+  std::cout<<"Successful bind"<<std::endl;
 
   int listen=listen_socket(server_fd);
   if(listen==-1)
@@ -73,10 +108,12 @@ int main()
   }
   std::cout<<"Successful listen"<<std::endl;
 
-  int n=accept(server_fd);
+  int n=accept_client(server_fd);
   if(n==-1)
   {
     return 1;
   }
   std::cout<<"Successful yehey fd="<<n<<std::endl;
+
+  echo_loop(n);
 }
