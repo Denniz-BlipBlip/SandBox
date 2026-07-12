@@ -45,7 +45,7 @@ int listen_socket(int server_fd)
   return 0;
 }
 
-int accept_socket(int server_fd)
+int accept(int server_fd)
 {
   sockaddr_in client_address;
   socklen_t  client_len=sizeof(client_address);
@@ -62,29 +62,21 @@ int accept_socket(int server_fd)
 }
 
 
-
 int main()
 {
   int server_fd=check_socket();
 
-  int b=bind_socket(server_fd,8080);
-  if(b==-1)
+  int listen=listen_socket(server_fd);
+  if(listen==-1)
   {
     return 1;
   }
-  std::cout<<"successful bind"<<std::endl;
+  std::cout<<"Successful listen"<<std::endl;
 
-  int a=listen_socket(server_fd);
-  if(a==-1)
+  int n=accept(server_fd);
+  if(n==-1)
   {
     return 1;
   }
-  std::cout<<"successful listen"<<std::endl;
-
-  int c=accept_socket(server_fd);
-  if(c==-1)
-  {
-    return 1;
-  }
-  std::cout<<"successful accept fd="<<c<<std::endl;
+  std::cout<<"Successful yehey fd="<<n<<std::endl;
 }
