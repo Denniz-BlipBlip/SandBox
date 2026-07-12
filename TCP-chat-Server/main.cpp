@@ -3,6 +3,7 @@
 #include <sys/endian.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
@@ -38,10 +39,26 @@ int listen_socket(int server_fd)
 {
   if(listen(server_fd,5)==-1)
   {
-    perror("listen failed")
+    perror("listen failed");
     return -1;
   }
   return 0;
+}
+
+int accept(int server_fd)
+{
+  sockaddr_in client_address;
+  socklen_t  client_len=sizeof(client_address);
+
+  int client_fd=accept(server_fd,(struct sockaddr*)&client_address,&client_len);
+
+  if(client_fd==-1)
+  {
+    perror("accept failed");
+    return -1;
+  }
+  std::cout<<"client connected fd = "<<client_fd<<std::endl;
+  return client_fd;
 }
 
 
@@ -54,14 +71,5 @@ int main()
     return 1;
   }
 
-  std::cout<<"successfully created socket "<<n<<std::endl;
-
-  int check=bind_socket(n,8080);
-
-  if(check==-1)
-  {
-    return 1;
-  }
-
-  std::cout<<"sumakses"<<std::endl;
+  accept(check_socket());
 }
