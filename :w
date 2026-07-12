@@ -29,12 +29,9 @@ void broadcast_msg(int client_fd,const char* buffer,int len)
 {
   std::lock_guard<std::mutex>guard(clients_mutex);
 
-  for(int fd:clients)
+  for(int fd:client_fd)
   {
-    if(fd!=client_fd)
-    {
-      send(fd,buffer,len,0);
-    }
+    send(fd,buffer,len,0);
   }
 }
 
