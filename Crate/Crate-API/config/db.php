@@ -17,10 +17,12 @@ function get_db()
 function init_db()
 {
   $db=get_db();
-  $db->exec("CREATE TABLE IF NOT EXISTS users 
+  $db->exec("CREATE TABLE IF NOT EXISTS items 
   (
-    id INT  AUTO_INCREMENT PRIMARY KEY,
+    id AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    quantity INT  NOT NULL DEFAULT 0,
+    price DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT_TIMESTAMP
   )");
 }

@@ -1,24 +1,9 @@
 <?php
 require_once '../config/db.php';
-initDB();
-$db = getDB();
-$users = $db->query('SELECT * FROM users')->fetchAll(PDO::FETCH_ASSOC);
+init_db();
+$db=get_db();
+$items=$db->query('SELECT * FROM items')->fetchAll(PDO::FETCH_ASSOC);
+
+header('Content-Type: application/json');
+echo json_encode($items);
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>crate-api</title>
-  <link rel="stylesheet" href="../public/css/style.css">
-</head>
-<body>
-  <h1>Hello from crate-api!</h1>
-  <ul>
-    <?php foreach($users as $user): ?>
-      <li><?= htmlspecialchars($user['name']) ?></li>
-    <?php endforeach; ?>
-  </ul>
-  <script src="../public/js/main.js"></script>
-</body>
-</html>
