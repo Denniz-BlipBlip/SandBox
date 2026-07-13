@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
+#include "chat.hpp"
 
 int check_socket()
 {
@@ -92,6 +93,7 @@ void echo_loop(int server_fd)
 
 int main()
 {
+  bool running=true;
   int server_fd=check_socket();
 
   int bind=bind_socket(server_fd,8080);
@@ -108,12 +110,13 @@ int main()
   }
   std::cout<<"Successful listen"<<std::endl;
 
-  int n=accept_client(server_fd);
-  if(n==-1)
+  while(running)
   {
-    return 1;
-  }
-  std::cout<<"Successful yehey fd="<<n<<std::endl;
+    int client_fd=accept_client(server_fd);
+    if(client_fd==-1)continue;
 
-  echo_loop(n);
+    add_client(client_fd);
+    std::thread t(handle_client, client_fd);
+    t.detach();
+  }
 }
