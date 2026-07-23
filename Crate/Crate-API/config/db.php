@@ -21,7 +21,7 @@ function init_db()
   (
     id AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    quantity INT  NOT NULL DEFAULT 0,
+    quantity INT NOT NULL DEFAULT 0,
     price DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT_TIMESTAMP
   )");
