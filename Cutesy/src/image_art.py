@@ -3,13 +3,13 @@ import numpy as np
 
 class Cutesy:
     def __init__(self,image):
-        self.cell_size=12
+        self.cell_size=10
         self.img=Image.open(image)
-        self.cols=60
+        self.cols=100
         self.compensation=0.55
         self.aspect=self.img.height/self.img.width
         self.rows=int(self.cols*self.aspect*self.compensation)
-        self.small=self.img.resize((self.cols,self.rows))
+        self.small=self.img.resize((self.cols,self.rows),Image.LANCZOS)
         self.pixels=np.array(self.small.convert("RGB"))
         self.gray=self.pixels.mean(axis=2)
         self.DIGIT_RAMP="1 7 3 4 9 5 2 6 0 8".split()
@@ -43,8 +43,13 @@ class Cutesy:
                 digit=self.brightness(brightness)
                 x=c*self.cell_size
                 y=r*self.cell_size
-                r_val,g_val,b_val=self.pixels[r,c]
+                #r_val,g_val,b_val=self.pixels[r,c]
                 self.draw.text((x,y), digit, font=self.font, fill=(int(brightness),)*3)
                 #self.draw.text((x,y),digit,font=self.font,fill=(int(r_val),int(g_val),int(b_val)))
-            self.canvas.save("output.jpg")
-            print("saved output.jpg")
+        self.canvas.save("output.png")
+        print("saved output.png")
+
+
+    def checkTTF(self):
+        print(self.font.path)
+        print(self.font.size)
