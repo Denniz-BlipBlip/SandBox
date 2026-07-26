@@ -1,6 +1,7 @@
 from image_art import Cutesy
 
-ct=Cutesy("Photo/example3.jpg")
+ct=Cutesy("Photo/1.jpg")
 #ot.checkTTF()
 #ct.preview()
-ct.checker()
+ct.grayScale()
+ct.colored()

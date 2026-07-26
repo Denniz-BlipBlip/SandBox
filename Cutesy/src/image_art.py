@@ -38,19 +38,30 @@ class Cutesy:
                 row += digit
             print(row)
 
-    def checker(self):
+    def grayScale(self):
         for r in range(self.gray.shape[0]):
             for c in range(self.gray.shape[1]):
                 brightness=self.gray[r,c]
                 digit=self.brightness(brightness)
                 x=c*self.cell_w
                 y=r*self.cell_h
-                #r_val,g_val,b_val=self.pixels[r,c]
-                self.draw.text((x,y), digit, font=self.font, fill=(int(brightness),)*3)
-                #self.draw.text((x,y),digit,font=self.font,fill=(int(r_val),int(g_val),int(b_val)))
-        self.canvas.save("output.png")
-        print("saved output.png")
+                boosted = min(255, int(brightness * 1.4))
+                self.draw.text((x,y), digit, font=self.font,fill=(boosted,)*3)
+        self.canvas.save("grayscale.png")
+        print("saved GrayScale_output.png")
 
+    def colored(self):
+        for r in range(self.gray.shape[0]):
+            for c in range(self.gray.shape[1]):
+                brightness=self.gray[r,c]
+                digit=self.brightness(brightness)
+                x=c*self.cell_w
+                y=r*self.cell_h
+                r_val,g_val,b_val=self.pixels[r,c]
+                boosted = min(255, int(brightness * 1.4))
+                self.draw.text((x,y),digit,font=self.font,fill=(int(r_val),int(g_val),int(b_val)))
+        self.canvas.save("colored.png")
+        print("saved colored_output.png")
 
     def checkTTF(self):
         print(self.font.path)
